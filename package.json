@@ -1,7 +1,7 @@
 {
   "name": "dsh-effort-switcher",
-  "version": "1.0.0",
-  "description": "DSH插件：将推理强度选择重构为滑动条组件",
+  "version": "1.1.0",
+  "description": "DSH插件：将推理强度选择重构为滑动条组件（兼容 0.1.x 与 0.2.0）",
   "type": "module",
   "main": "host.js",
   "exports": {

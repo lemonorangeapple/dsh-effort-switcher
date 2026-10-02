@@ -39,6 +39,35 @@ const react = {
     }
 };
 
+// --- Synchronously-settling thenables mirroring the DSH select contracts ---
+// 0.2.0/0.1.7+ resolve a RemoteResult ({ ok: false, error } on rejection);
+// 0.1.x-era builds reject with an Error. The face must map both onto its
+// accepted boolean, and the component consumes that boolean synchronously.
+function resolvedThenable(value) {
+    return {
+        then(onFulfilled, onRejected) {
+            if (onFulfilled === undefined) return resolvedThenable(value);
+            try {
+                return resolvedThenable(onFulfilled(value));
+            } catch (error) {
+                return rejectedThenable(error);
+            }
+        }
+    };
+}
+function rejectedThenable(error) {
+    return {
+        then(onFulfilled, onRejected) {
+            if (onRejected === undefined) return rejectedThenable(error);
+            try {
+                return resolvedThenable(onRejected(error));
+            } catch (nextError) {
+                return rejectedThenable(nextError);
+            }
+        }
+    };
+}
+
 let registered = null;
 const directoryCalls = { load: 0, select: [] };
 const listeners = new Set();
@@ -101,6 +130,14 @@ const snapshot = {
             name: "MiMo-V2.5-Pro",
             description: "Xiaomi 自建路由"
         }]
+    }, {
+        id: "deepseek-account",
+        name: "deepseek-account",
+        models: [{
+            id: "deepseek-v4-turbo",
+            name: "DeepSeek-V4-Turbo-Account",
+            description: "账号路由"
+        }]
     }]
 };
 
@@ -120,15 +157,11 @@ const directory = {
         directoryCalls.load++;
         return Promise.resolve();
     },
+    // 0.2.0 contract: success resolves a RemoteResult, rejection resolves { ok: false, error }.
     select(selection) {
         directoryCalls.select.push(selection);
         snapshot.current = { ...snapshot.current, ...selection };
-        return {
-            then(resolve) {
-                resolve(true);
-                return this;
-            }
-        };
+        return resolvedThenable({ ok: true, value: { selected: selection } });
     }
 };
 
@@ -220,6 +253,9 @@ if (!styleTag.textContent.includes(".dsh-es-sliderFill")) throw new Error("slide
 if (!styleTag.textContent.includes(".dsh-es-sliderTicks")) throw new Error("slider must render embedded notch markers");
 if (!styleTag.textContent.includes("z-index: 3")) throw new Error("native input must sit above the visual rail");
 if (!styleTag.textContent.includes("accent-color: transparent")) throw new Error("native slider accent must not paint leftover fill");
+// Compact composer row (0.1.7+/0.2.0): labels hide and the glyph shows via the owner's CSS variables.
+if (!styleTag.textContent.includes("--dsh-composer-model-text-display")) throw new Error("text spans must follow the composer's compact-mode variable");
+if (!styleTag.textContent.includes("--dsh-composer-model-icon-display")) throw new Error("trigger must mount the composer's compact-mode icon surface");
 
 function find(node, predicate) {
     if (node === null || node === undefined) return undefined;
@@ -237,6 +273,17 @@ function find(node, predicate) {
         if (found) return found;
     }
     return undefined;
+}
+function findAll(node, predicate, out = []) {
+    if (node === null || node === undefined) return out;
+    if (Array.isArray(node)) {
+        for (const child of node) findAll(child, predicate, out);
+        return out;
+    }
+    if (typeof node !== "object") return out;
+    if (predicate(node)) out.push(node);
+    for (const child of node.children ?? []) findAll(child, predicate, out);
+    return out;
 }
 function findRange(node) {
     return find(node, (n) => n.props?.type === "range");
@@ -295,6 +342,11 @@ if (text(effortSpan).trim() !== "低") throw new Error(`effort span must hold th
 // Chevron must be the DSH svg icon
 const chevron = trigger.children.find((c) => c?.type === "svg");
 if (!chevron) throw new Error("trigger chevron svg missing");
+// Compact-row glyph: a single hidden-by-default icon span mirrors the shipped seat.
+const triggerIcon = trigger.children.find((c) => c?.props?.className === "dsh-es-triggerIcon");
+if (!triggerIcon) throw new Error("compact-row icon surface missing");
+const iconSvg = triggerIcon.children.find((c) => c?.type === "svg");
+if (!iconSvg || Number(iconSvg.props?.width) !== 16) throw new Error("compact-row icon must be the 16px DSH Models glyph");
 
 // 5. Open the menu (click the trigger) and re-render
 tree.children[0].props.onClick();
@@ -362,6 +414,15 @@ if (typeof modelMenuStyle.bottom !== "string" || !modelMenuStyle.bottom.includes
 }
 const listText = text(modelMenu);
 if (!listText.includes("MiMo")) throw new Error("model list must contain the Xiaomi model group");
+
+// 8a. 0.2.0 provider order: the account route first, the official route next,
+//     the rest in catalog order — even when the host lists other groups first.
+const groupHeaders = findAll(modelMenu, (n) => n.props?.className === "dsh-es-menuGroup").map((n) => text(n));
+const expectedHeaders = ["DeepSeek 账号", "DeepSeek", "Demo", "Xiaomi"];
+if (JSON.stringify(groupHeaders) !== JSON.stringify(expectedHeaders)) {
+    throw new Error(`provider groups must follow the 0.2.0 order ${JSON.stringify(expectedHeaders)}, got ${JSON.stringify(groupHeaders)}`);
+}
+
 const deepseekItem = find(modelMenu, (n) => n.props?.type === "button" && text(n).includes("DeepSeek-V4-Flash"));
 if (!deepseekItem) throw new Error("DeepSeek official model missing from list");
 if (deepseekItem.props.disabled === true || deepseekItem.props["aria-disabled"] === true) {
@@ -567,12 +628,7 @@ const originalSelect = face.select;
 face.select = (selection) => {
     directoryCalls.select.push(selection);
     snapshot.error = `session.selectModel failed: model-unavailable: Model "${selection.model}" does not accept image input, but this session already contains images; select an image-capable model.`;
-    return {
-        then(resolve) {
-            resolve(false);
-            return this;
-        }
-    };
+    return resolvedThenable(false);
 };
 beginRender();
 tree = registered.component({
@@ -615,8 +671,38 @@ snapshot.error = null;
 face.load();
 if (directoryCalls.load !== 1) throw new Error("load not delegated");
 
+// 14. Face select settlement adapters: 0.2.0/0.1.7+ resolve a RemoteResult
+//     ({ ok: false } on rejection); 0.1.x-era builds reject with an Error or
+//     resolve void. The face must expose one accepted boolean across them all.
+const realDirectorySelect = directory.select;
+let settledAccepted;
+directory.select = (selection) => {
+    directoryCalls.select.push(selection);
+    return resolvedThenable({ ok: false, error: { code: "session/model-unavailable", message: "Model \"mimo-v2.5\" does not support image input." } });
+};
+settledAccepted = undefined;
+face.select({ provider: "xiaomi", model: "mimo-v2.5" }).then((accepted) => { settledAccepted = accepted; });
+if (settledAccepted !== false) throw new Error("0.2.0 resolved RemoteResult rejection must surface as accepted=false");
+directory.select = (selection) => {
+    directoryCalls.select.push(selection);
+    return rejectedThenable(new Error("session.selectModel failed: session/model-unavailable: boom"));
+};
+settledAccepted = undefined;
+face.select({ provider: "xiaomi", model: "mimo-v2.5" }).then((accepted) => { settledAccepted = accepted; });
+if (settledAccepted !== false) throw new Error("legacy thrown rejection must surface as accepted=false");
+directory.select = (selection) => {
+    directoryCalls.select.push(selection);
+    return resolvedThenable(undefined);
+};
+settledAccepted = undefined;
+face.select({ provider: "xiaomi", model: "mimo-v2.5" }).then((accepted) => { settledAccepted = accepted; });
+if (settledAccepted !== true) throw new Error("legacy void success must surface as accepted=true");
+directory.select = realDirectorySelect;
+
 console.log("all checks passed");
 console.log("- config validation ok, priority =", registered.options.priority);
 console.log("- trigger label:", triggerLabel);
 console.log("- popover floats above trigger (absolute, bottom: calc(100% + 8px))");
 console.log("- secondary model window floats above the panel; slider submits:", JSON.stringify(selected));
+console.log("- 0.2.0 parity: provider order", JSON.stringify(groupHeaders));
+console.log("- 0.2.0 select settlement: RemoteResult + legacy throw/void all mapped to accepted");
