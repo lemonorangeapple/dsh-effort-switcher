@@ -17,20 +17,20 @@ window.__ModuleLoader__.load({
 }
 .dsh-es-trigger {
     min-width: 0;
-    max-width: 200px;
-    height: 26px;
+    max-width: min(360px, 45cqw);
+    height: 28px;
     color: var(--dsw-alias-label-secondary);
     cursor: pointer;
     background: 0 0;
     border: none;
-    border-radius: 22px;
+    border-radius: var(--dsw-radius-sm, 22px);
     outline: none;
     align-items: center;
-    gap: 3px;
-    padding: 0 3px 0 6px;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 18px;
+    gap: 4px;
+    padding: 0 4px 0 8px;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
     display: flex;
 }
 .dsh-es-trigger:hover:not(:disabled) {
@@ -50,8 +50,12 @@ window.__ModuleLoader__.load({
     overflow: hidden;
 }
 .dsh-es-triggerEffort {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
     color: var(--dsw-alias-label-caption);
-    flex: none;
+    flex-shrink: 1000;
+    overflow: hidden;
 }
 .dsh-es-chevron {
     color: var(--dsw-alias-label-caption);
@@ -71,7 +75,7 @@ window.__ModuleLoader__.load({
     color: var(--dsw-alias-label-primary);
     --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
     --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
-    border-radius: 10px;
+    border-radius: var(--dsw-radius-lg, 10px);
     flex-direction: column;
     padding: 3px;
     display: flex;
@@ -92,7 +96,7 @@ window.__ModuleLoader__.load({
     color: inherit;
     font: inherit;
     text-align: left;
-    border-radius: 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
     padding: 4px 6px;
     cursor: pointer;
     font-size: 12px;
@@ -119,7 +123,7 @@ window.__ModuleLoader__.load({
     overflow-y: auto;
     min-height: 0;
     flex: 1 1 auto;
-    border-radius: 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
     margin: 0 2px;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -139,7 +143,7 @@ window.__ModuleLoader__.load({
     color: var(--dsw-alias-label-primary);
     --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
     --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
-    border-radius: 10px;
+    border-radius: var(--dsw-radius-lg, 10px);
     flex-direction: column;
     padding: 3px;
     display: flex;
@@ -170,7 +174,7 @@ window.__ModuleLoader__.load({
     color: inherit;
     font: inherit;
     text-align: left;
-    border-radius: 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
     padding: 4px 6px;
     cursor: pointer;
     font-size: 12px;
@@ -206,7 +210,7 @@ window.__ModuleLoader__.load({
     max-width: 200px;
     padding: 5px 6px;
     border: 1px solid var(--dsw-alias-border-inverted);
-    border-radius: 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
     background: var(--dsw-specific-menu);
     box-shadow: var(--dsw-shadow-lv3);
     color: var(--dsw-alias-label-primary);
@@ -232,7 +236,7 @@ window.__ModuleLoader__.load({
 .dsh-es-menuError {
     background: var(--dsw-alias-interactive-bg-hover-danger);
     color: var(--dsw-alias-state-error-primary);
-    border-radius: 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
     margin: 3px;
     padding: 5px 6px;
     font-size: 11px;
@@ -417,7 +421,7 @@ window.__ModuleLoader__.load({
 .dsh-es-sliderError {
     margin: 2px 0 0;
     padding: 4px 6px;
-    border-radius: 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
     background: var(--dsw-alias-interactive-bg-hover-danger);
     color: var(--dsw-alias-state-error-primary);
     font-size: 11px;

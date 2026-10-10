@@ -237,7 +237,7 @@ if (!captured) throw new Error("client module did not register");
 // 0. Styles must be injected at module load (original bundles do this at top level)
 const styleTag = styleTags.find((tag) => tag.dataset.pluginCss === "dsh-effort-switcher/seat.css");
 if (!styleTag) throw new Error("style tag not injected at module load");
-if (!styleTag.textContent.includes("border-radius: 22px")) throw new Error("trigger radius missing from injected css");
+if (!styleTag.textContent.includes("border-radius: var(--dsw-radius-sm, 22px)")) throw new Error("trigger must follow the host radius token, falling back to 22px");
 if (!styleTag.textContent.includes("--dsw-alias-label-secondary")) throw new Error("dsh tokens missing from injected css");
 if (!styleTag.textContent.includes("scrollbar-width: none")) throw new Error("scrollbar must be hidden");
 if (!styleTag.textContent.includes("::-webkit-scrollbar")) throw new Error("webkit scrollbar hide rule missing");
@@ -279,6 +279,19 @@ for (const rule of sliderRoundRules) {
 for (const part of ["sliderGroove", "sliderTrack", "sliderFill", "sliderKnobFace", "sliderTick"]) {
     const covered = sliderRoundRules.some((rule) => rule.selector.includes(`.dsh-es-${part}`) && /corner-shape:\s*round/.test(rule.body));
     if (!covered) throw new Error(`.dsh-es-${part} must set corner-shape: round`);
+}
+// The seat matches the host's own model seat (DSH 0.2: 28px tall, 13px / 400) and every
+// radius follows the host's tokens, falling back to the earlier fixed values.
+const triggerRule = cssRules.find((rule) => rule.selector === ".dsh-es-trigger");
+if (!triggerRule) throw new Error("trigger rule missing");
+for (const expected of [/height:\s*28px/, /font-size:\s*13px/, /font-weight:\s*400/, /line-height:\s*20px/, /max-width:\s*min\(360px,\s*45cqw\)/]) {
+    if (!expected.test(triggerRule.body)) throw new Error(`trigger must match the host seat: ${expected}`);
+}
+for (const rule of cssRules) {
+    const radius = rule.body.match(/border-radius:\s*([^;]+);/)?.[1];
+    if (radius === undefined || /^(50%|13px|0)/.test(radius) || radius.startsWith("var(--dsw-radius-")) continue;
+    if (rule.selector.startsWith("@") || !/^\.dsh-es-/.test(rule.selector)) continue;
+    throw new Error(`${rule.selector} uses a fixed border-radius (${radius}); use a --dsw-radius-* token with a fallback`);
 }
 // The trigger and menu keep following the host's corner style.
 for (const rule of cssRules) {
