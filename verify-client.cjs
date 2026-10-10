@@ -6,9 +6,19 @@ let captured = null;
 
 // --- Minimal React shim sufficient to render EffortSliderSeat ---
 const stateValues = new Map();
+const refValues = new Map();
+const effectSlots = new Map();
 let renderSeq = 0;
+let refSeq = 0;
+let effectSeq = 0;
+let hookCount = 0;
+let renderedEffects = [];
 function beginRender() {
     renderSeq = 0;
+    refSeq = 0;
+    effectSeq = 0;
+    hookCount = 0;
+    renderedEffects = [];
 }
 function makeState(initial) {
     const key = renderSeq++;
@@ -18,23 +28,54 @@ function makeState(initial) {
         stateValues.set(key, next);
     }];
 }
+// Effects do not run on their own (the sync checks below drive state by hand).
+// flushEffects() runs the effects of the last render the way React's commit
+// phase would: only those whose dependencies changed, cleaning up first.
+function flushEffects() {
+    for (const { key, fn, deps } of renderedEffects) {
+        const slot = effectSlots.get(key);
+        const changed = slot === undefined
+            || deps === undefined
+            || slot.deps === undefined
+            || deps.length !== slot.deps.length
+            || deps.some((dep, index) => !Object.is(dep, slot.deps[index]));
+        if (!changed) continue;
+        if (slot !== undefined && typeof slot.cleanup === "function") slot.cleanup();
+        const cleanup = fn();
+        effectSlots.set(key, { deps, cleanup });
+    }
+}
+function resetComponentState() {
+    stateValues.clear();
+    refValues.clear();
+    effectSlots.clear();
+}
 
 const react = {
     createElement(type, props, ...children) {
         return { type, props: props || {}, children };
     },
     Fragment: Symbol("Fragment"),
-    useEffect() {},
+    useEffect(fn, deps) {
+        hookCount++;
+        renderedEffects.push({ key: effectSeq++, fn, deps });
+    },
     useRef(initial) {
-        return { current: initial };
+        hookCount++;
+        const key = refSeq++;
+        if (!refValues.has(key)) refValues.set(key, { current: initial });
+        return refValues.get(key);
     },
     useMemo(fn) {
+        hookCount++;
         return fn();
     },
     useState(initial) {
+        hookCount++;
         return makeState(initial);
     },
     useSyncExternalStore(_subscribe, getSnapshot) {
+        hookCount++;
         return getSnapshot();
     }
 };
@@ -159,6 +200,15 @@ const ctx = {
     }
 };
 
+// The plugin must not write to the console during normal operation.
+const consoleCalls = [];
+const consoleSpy = {
+    log: (...args) => consoleCalls.push(["log", ...args]),
+    info: (...args) => consoleCalls.push(["info", ...args]),
+    warn: (...args) => consoleCalls.push(["warn", ...args]),
+    error: (...args) => consoleCalls.push(["error", ...args])
+};
+
 const styleTags = [];
 const context = vm.createContext({
     window: {
@@ -174,9 +224,11 @@ const context = vm.createContext({
     document: {
         querySelector: () => null,
         createElement: () => ({ dataset: {}, textContent: "" }),
-        head: { appendChild(node) { styleTags.push(node); } }
+        head: { appendChild(node) { styleTags.push(node); } },
+        addEventListener() {},
+        removeEventListener() {}
     },
-    console
+    console: consoleSpy
 });
 
 vm.runInContext(source, context, { filename: "index.js" });
@@ -615,8 +667,192 @@ snapshot.error = null;
 face.load();
 if (directoryCalls.load !== 1) throw new Error("load not delegated");
 
-console.log("all checks passed");
-console.log("- config validation ok, priority =", registered.options.priority);
-console.log("- trigger label:", triggerLabel);
-console.log("- popover floats above trigger (absolute, bottom: calc(100% + 8px))");
-console.log("- secondary model window floats above the panel; slider submits:", JSON.stringify(selected));
+// ---------------------------------------------------------------------------
+// Slider commit behaviour. These checks drive the component through
+// flushEffects(), so effect-based logic (draft reset, queued release) is
+// exercised too. Every scenario starts from a freshly mounted, open menu.
+// ---------------------------------------------------------------------------
+const realSelect = directory.select;
+const tick = () => new Promise((resolve) => setImmediate(resolve));
+function assert(condition, message) {
+    if (!condition) throw new Error(message);
+}
+function renderSeat(props = {}) {
+    beginRender();
+    return registered.component({
+        locked: false,
+        available: face.available,
+        directory: face.directory,
+        load: face.load,
+        select: face.select,
+        ...props
+    });
+}
+// Render and commit a few times so state set by effects shows up in the tree.
+function settle() {
+    for (let pass = 0; pass < 3; pass++) {
+        renderSeat();
+        flushEffects();
+    }
+    return renderSeat();
+}
+function mountOpenSeat() {
+    resetComponentState();
+    snapshot.current = { provider: "demo", model: "reasoning-model", reasoningEffort: "low" };
+    snapshot.status = "ready";
+    snapshot.error = null;
+    directory.select = realSelect;
+    directoryCalls.select.length = 0;
+    const closed = renderSeat();
+    flushEffects();
+    closed.children[0].props.onClick();
+    return settle();
+}
+function sliderValue(tree) {
+    return Number(findRange(tree).props.value);
+}
+function sliderError(tree) {
+    const node = find(tree, (n) => n.props?.className === "dsh-es-sliderError");
+    return node === undefined ? null : text(node);
+}
+function drag(tree, value) {
+    findRange(tree).props.onInput({ currentTarget: { value: String(value) } });
+    return settle();
+}
+function release(tree, value) {
+    findRange(tree).props.onMouseUp({ currentTarget: { value: String(value) } });
+    return settle();
+}
+
+async function main() {
+    // A. A refused write must roll the thumb back and say why.
+    const failures = [
+        {
+            label: "resolves { ok: false }",
+            hostError: `session.selectModel failed: Model "x" does not support reasoning effort "high".`,
+            fail: () => Promise.resolve({ ok: false, error: { message: "refused" } }),
+            message: "此模型不支持当前推理强度"
+        },
+        {
+            label: "rejects",
+            hostError: null,
+            fail: () => Promise.reject(new Error("boom")),
+            message: "推理强度切换失败"
+        },
+        {
+            label: "reports a plain host error",
+            hostError: "session is held by another writer",
+            fail: () => Promise.resolve({ ok: false }),
+            message: "session is held by another writer"
+        }
+    ];
+    for (const failure of failures) {
+        let tree = mountOpenSeat();
+        directory.select = (selection) => {
+            directoryCalls.select.push(selection);
+            return failure.fail();
+        };
+        snapshot.error = failure.hostError;
+        tree = drag(tree, 2);
+        tree = release(tree, 2);
+        assert(directoryCalls.select.length === 1 && directoryCalls.select[0].reasoningEffort === "high",
+            `[${failure.label}] release must submit high once`);
+        assert(sliderValue(tree) === 2, `[${failure.label}] thumb stays pinned while the write is in flight`);
+        await tick();
+        tree = settle();
+        assert(sliderValue(tree) === 0, `[${failure.label}] refused write must roll the thumb back to the real effort`);
+        assert(sliderError(tree) === failure.message,
+            `[${failure.label}] expected error ${JSON.stringify(failure.message)}, got ${JSON.stringify(sliderError(tree))}`);
+        // The next successful write clears the notice.
+        directory.select = realSelect;
+        snapshot.error = null;
+        tree = drag(tree, 1);
+        tree = release(tree, 1);
+        assert(sliderError(tree) === null, `[${failure.label}] a new attempt must clear the error`);
+        assert(sliderValue(tree) === 1, `[${failure.label}] successful write must land on the new notch`);
+    }
+
+    // B. Every key that moves a native range input must commit on keyup.
+    for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]) {
+        const tree = mountOpenSeat();
+        findRange(tree).props.onKeyUp({ key, currentTarget: { value: "2" } });
+        assert(directoryCalls.select.length === 1 && directoryCalls.select[0].reasoningEffort === "high",
+            `${key} must commit the slider value on keyup`);
+    }
+    for (const key of ["Tab", "Escape", "Enter", "Shift", "a"]) {
+        const tree = mountOpenSeat();
+        findRange(tree).props.onKeyUp({ key, currentTarget: { value: "2" } });
+        assert(directoryCalls.select.length === 0, `${key} must not commit`);
+    }
+
+    // C. A release while the store is busy is held back, then sent when it settles.
+    {
+        let tree = mountOpenSeat();
+        snapshot.status = "selecting";
+        tree = settle();
+        tree = drag(tree, 2);
+        tree = release(tree, 2);
+        assert(directoryCalls.select.length === 0, "release while busy must not write yet");
+        assert(sliderValue(tree) === 2, "thumb must stay where it was released while the write waits");
+        snapshot.status = "ready";
+        tree = settle();
+        assert(directoryCalls.select.length === 1 && directoryCalls.select[0].reasoningEffort === "high",
+            `queued release must be sent once the store is idle, got ${JSON.stringify(directoryCalls.select)}`);
+        assert(sliderValue(tree) === 2, "thumb must end on the released notch");
+    }
+    {
+        // A queued release belongs to the model it was made on. Notch 1 exists on
+        // both models, so only the model check (not an out-of-range index) can stop it.
+        let tree = mountOpenSeat();
+        snapshot.status = "selecting";
+        tree = settle();
+        tree = drag(tree, 1);
+        tree = release(tree, 1);
+        assert(directoryCalls.select.length === 0, "release while busy must not write yet");
+        snapshot.current = { provider: "demo", model: "other-model", reasoningEffort: "low" };
+        snapshot.status = "ready";
+        tree = settle();
+        assert(directoryCalls.select.length === 0, "queued release must be dropped when the model changed");
+        assert(sliderValue(tree) === 0, "thumb must follow the new model after the queued release is dropped");
+    }
+
+    // D. The hook count must not depend on `available` (no hooks after an early return).
+    {
+        resetComponentState();
+        renderSeat({ available: true });
+        const hooksWhenAvailable = hookCount;
+        resetComponentState();
+        const hidden = renderSeat({ available: false });
+        assert(hidden === null, "unavailable seat must render nothing");
+        assert(hookCount === hooksWhenAvailable,
+            `hook count changed with availability: ${hooksWhenAvailable} vs ${hookCount}`);
+    }
+
+    // E. No console output, including the "no available models" state.
+    {
+        const savedGroups = snapshot.groups;
+        resetComponentState();
+        snapshot.groups = [];
+        snapshot.current = null;
+        snapshot.status = "ready";
+        renderSeat();
+        flushEffects();
+        await tick();
+        settle();
+        snapshot.groups = savedGroups;
+        assert(consoleCalls.length === 0, `plugin must not log: ${JSON.stringify(consoleCalls)}`);
+    }
+
+    console.log("all checks passed");
+    console.log("- config validation ok, priority =", registered.options.priority);
+    console.log("- trigger label:", triggerLabel);
+    console.log("- popover floats above trigger (absolute, bottom: calc(100% + 8px))");
+    console.log("- secondary model window floats above the panel; slider submits:", JSON.stringify(selected));
+    console.log("- refused writes roll back, all range keys commit, busy releases are queued");
+    console.log("- hook count is stable across availability; no console output");
+}
+
+main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+});
