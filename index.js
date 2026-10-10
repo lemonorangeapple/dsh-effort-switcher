@@ -10,27 +10,32 @@ window.__ModuleLoader__.load({
         const slotName = "conversation.input.model";
 
         const css = `
+/* Panels are opaque. DSH 0.2 makes --dsw-specific-menu a translucent glass fill
+   that the host paints over a blurred backdrop; here it would let the composer
+   show through, so the host's fill is laid over the opaque page background. On
+   hosts where the menu fill is already opaque (0.1.0) the base never shows. */
 .dsh-es-root {
+    --dsh-es-panel-bg: linear-gradient(var(--dsw-specific-menu), var(--dsw-specific-menu)), var(--dsw-alias-bg-base, #fff);
     min-width: 0;
     position: relative;
     display: inline-flex;
 }
 .dsh-es-trigger {
     min-width: 0;
-    max-width: 200px;
-    height: 26px;
+    max-width: min(360px, 45cqw);
+    height: 28px;
     color: var(--dsw-alias-label-secondary);
     cursor: pointer;
     background: 0 0;
     border: none;
-    border-radius: 22px;
+    border-radius: var(--dsw-radius-sm, 24px);
     outline: none;
     align-items: center;
-    gap: 3px;
-    padding: 0 3px 0 6px;
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 18px;
+    gap: 4px;
+    padding: 0 4px 0 8px;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 20px;
     display: flex;
 }
 .dsh-es-trigger:hover:not(:disabled) {
@@ -50,8 +55,12 @@ window.__ModuleLoader__.load({
     overflow: hidden;
 }
 .dsh-es-triggerEffort {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
     color: var(--dsw-alias-label-caption);
-    flex: none;
+    flex-shrink: 1000;
+    overflow: hidden;
 }
 .dsh-es-chevron {
     color: var(--dsw-alias-label-caption);
@@ -64,14 +73,14 @@ window.__ModuleLoader__.load({
 .dsh-es-menu {
     z-index: 9999;
     border: 1px solid var(--dsw-alias-border-inverted);
-    background: var(--dsw-specific-menu);
+    background: var(--dsh-es-panel-bg);
     width: min(240px, calc(100vw - 32px));
     max-height: min(380px, calc(100vh - 96px));
     box-shadow: var(--dsw-shadow-lv3);
     color: var(--dsw-alias-label-primary);
     --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
     --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
-    border-radius: 10px;
+    border-radius: var(--dsw-radius-lg, 10px);
     flex-direction: column;
     padding: 3px;
     display: flex;
@@ -92,7 +101,7 @@ window.__ModuleLoader__.load({
     color: inherit;
     font: inherit;
     text-align: left;
-    border-radius: 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
     padding: 4px 6px;
     cursor: pointer;
     font-size: 12px;
@@ -119,7 +128,7 @@ window.__ModuleLoader__.load({
     overflow-y: auto;
     min-height: 0;
     flex: 1 1 auto;
-    border-radius: 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
     margin: 0 2px;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -132,14 +141,14 @@ window.__ModuleLoader__.load({
 .dsh-es-modelMenu {
     z-index: 10000;
     border: 1px solid var(--dsw-alias-border-inverted);
-    background: var(--dsw-specific-menu);
+    background: var(--dsh-es-panel-bg);
     width: min(220px, calc(100vw - 32px));
     max-height: min(240px, calc(100vh - 96px));
     box-shadow: var(--dsw-shadow-lv3);
     color: var(--dsw-alias-label-primary);
     --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
     --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
-    border-radius: 10px;
+    border-radius: var(--dsw-radius-lg, 10px);
     flex-direction: column;
     padding: 3px;
     display: flex;
@@ -170,7 +179,7 @@ window.__ModuleLoader__.load({
     color: inherit;
     font: inherit;
     text-align: left;
-    border-radius: 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
     padding: 4px 6px;
     cursor: pointer;
     font-size: 12px;
@@ -206,8 +215,8 @@ window.__ModuleLoader__.load({
     max-width: 200px;
     padding: 5px 6px;
     border: 1px solid var(--dsw-alias-border-inverted);
-    border-radius: 6px;
-    background: var(--dsw-specific-menu);
+    border-radius: var(--dsw-radius-sm, 6px);
+    background: var(--dsh-es-panel-bg);
     box-shadow: var(--dsw-shadow-lv3);
     color: var(--dsw-alias-label-primary);
     font-size: 11px;
@@ -232,7 +241,7 @@ window.__ModuleLoader__.load({
 .dsh-es-menuError {
     background: var(--dsw-alias-interactive-bg-hover-danger);
     color: var(--dsw-alias-state-error-primary);
-    border-radius: 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
     margin: 3px;
     padding: 5px 6px;
     font-size: 11px;
@@ -244,6 +253,9 @@ window.__ModuleLoader__.load({
     background: var(--dsw-alias-border-l1);
     flex: none;
 }
+/* DSH 0.1.2+ applies corner-shape: superellipse(1.5) to every element, which
+   turns border-radius circles into rounded squares. The slider's pill and
+   round parts opt back out the same way the host's own circular controls do. */
 .dsh-es-sliderWrap {
     padding: 3px 8px 5px;
     display: flex;
@@ -273,6 +285,7 @@ window.__ModuleLoader__.load({
     position: absolute;
     inset: 0;
     overflow: hidden;
+    corner-shape: round;
     border-radius: 13px;
     pointer-events: none;
 }
@@ -281,6 +294,7 @@ window.__ModuleLoader__.load({
     top: 0;
     bottom: 0;
     left: 0;
+    corner-shape: round;
     border-radius: 13px;
     pointer-events: none;
 }
@@ -318,6 +332,7 @@ window.__ModuleLoader__.load({
 .dsh-es-sliderKnobFace {
     width: 100%;
     height: 100%;
+    corner-shape: round;
     border-radius: 50%;
     background: #ffffff;
     box-shadow: none;
@@ -337,6 +352,7 @@ window.__ModuleLoader__.load({
 .dsh-es-sliderTick {
     width: 4px;
     height: 4px;
+    corner-shape: round;
     border-radius: 50%;
     background: rgb(255 255 255 / 38%);
 }
@@ -407,6 +423,15 @@ window.__ModuleLoader__.load({
     font-size: 11px;
     line-height: 15px;
 }
+.dsh-es-sliderError {
+    margin: 2px 0 0;
+    padding: 4px 6px;
+    border-radius: var(--dsw-radius-sm, 6px);
+    background: var(--dsw-alias-interactive-bg-hover-danger);
+    color: var(--dsw-alias-state-error-primary);
+    font-size: 11px;
+    line-height: 15px;
+}
 @keyframes dsh-es-pop {
     from {
         opacity: 0;
@@ -449,6 +474,17 @@ window.__ModuleLoader__.load({
             }
             return message;
         }
+
+        function explainEffortError(message) {
+            if (typeof message !== "string" || message.length === 0) return "推理强度切换失败";
+            return explainSelectionError(message);
+        }
+
+        // Every key that moves a native range input; the new value is committed on keyup.
+        const COMMIT_KEYS = new Set([
+            "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown",
+            "Home", "End", "PageUp", "PageDown"
+        ]);
 
         // Same glyphs as DSH's IconChevronDownOutline14 / IconChevronRightOutline14.
         const ICON_CHEVRON_DOWN = "M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z";
@@ -494,10 +530,15 @@ window.__ModuleLoader__.load({
             const [initialLoading, setInitialLoading] = react.useState(true);
             const [draft, setDraft] = react.useState(-1);
             const [pendingIndex, setPendingIndex] = react.useState(-1);
+            // A thumb release that arrived while the store was busy; sent once it settles.
+            const [queued, setQueued] = react.useState(null);
+            const [sliderError, setSliderError] = react.useState(null);
             const [panelHeight, setPanelHeight] = react.useState(0);
             const rootRef = react.useRef(null);
             const triggerRef = react.useRef(null);
             const panelRef = react.useRef(null);
+            // Model the store currently reports, readable from async callbacks.
+            const liveModelRef = react.useRef(null);
             const inputSnapshot = (useInput ?? defaultUseInput)((s) => s);
             const draftHasImages = inputSnapshot !== null && inputSnapshot !== undefined && (inputSnapshot.imageIds?.length ?? 0) > 0;
 
@@ -537,15 +578,6 @@ window.__ModuleLoader__.load({
                 return undefined;
             }, [state.current?.provider, state.current?.model, state.groups]);
 
-            // A committed model switch replaces the effort server-side; reset the
-            // local draft so the thumb follows the real selection.
-            react.useEffect(() => {
-                setDraft(-1);
-                setPendingIndex(-1);
-            }, [state.current?.provider, state.current?.model]);
-
-            if (!available) return null;
-
             const busy = state.status === "selecting" || state.status === "loading";
             const currentEffort = state.current?.reasoningEffort
                 ?? currentChoice?.model.reasoning?.defaultEffort
@@ -560,6 +592,63 @@ window.__ModuleLoader__.load({
                 ? "选择模型"
                 : currentChoice.model.name;
             const fullLabel = effortLabel === undefined ? modelLabel : `${modelLabel} · ${effortLabel}`;
+            const currentModelKey = state.current === null ? null : modelKey(state.current.provider, state.current.model);
+            liveModelRef.current = currentModelKey;
+
+            // A committed model switch replaces the effort server-side; reset the
+            // local draft so the thumb follows the real selection.
+            react.useEffect(() => {
+                setDraft(-1);
+                setPendingIndex(-1);
+                setQueued(null);
+                setSliderError(null);
+            }, [state.current?.provider, state.current?.model]);
+
+            // Submit a slider position as the current model's reasoning effort. If the
+            // host refuses the write, drop the pinned thumb so it shows the real
+            // effort again instead of a value that never took effect.
+            const submitEffort = (nextIndex) => {
+                const nextEffort = levels[nextIndex]?.id;
+                if (nextEffort === undefined || state.current === null || nextEffort === currentEffort) {
+                    setDraft(-1);
+                    setPendingIndex(-1);
+                    return;
+                }
+                const submittedKey = currentModelKey;
+                setSliderError(null);
+                setDraft(nextIndex);
+                setPendingIndex(nextIndex);
+                select({
+                    provider: state.current.provider,
+                    model: state.current.model,
+                    reasoningEffort: nextEffort
+                }).then((accepted) => {
+                    if (accepted || liveModelRef.current !== submittedKey) return;
+                    setDraft(-1);
+                    setPendingIndex(-1);
+                    setSliderError(explainEffortError(directory.getSnapshot().error));
+                });
+            };
+
+            react.useEffect(() => {
+                if (pendingIndex < 0) return;
+                if (currentIndex === pendingIndex) {
+                    setDraft(-1);
+                    setPendingIndex(-1);
+                }
+            }, [currentIndex, pendingIndex]);
+
+            // Send the release that was held back while the store was busy.
+            react.useEffect(() => {
+                if (busy || queued === null) return;
+                setQueued(null);
+                if (queued.key !== currentModelKey) return;
+                submitEffort(queued.index);
+            }, [busy, queued]);
+
+            // Keep every hook above this line: bailing out earlier changes the hook
+            // count between renders.
+            if (!available) return null;
 
             const chooseModel = (group, model) => {
                 const key = modelKey(group.id, model.id);
@@ -594,48 +683,23 @@ window.__ModuleLoader__.load({
             // CSS hover on .dsh-es-sliderRail now handles knob scaling.
 
             // Commit the live thumb value on release. Keep the local pin until
-            // the store catches up so the knob does not snap back.
+            // the store catches up so the knob does not snap back. A release that
+            // lands while the store is busy is queued, not dropped.
             const commitEffort = (event) => {
                 const nextIndex = Number(event?.currentTarget?.value ?? draft);
-                if (!Number.isFinite(nextIndex) || nextIndex < 0 || busy) return;
-                const nextEffort = levels[nextIndex]?.id;
-                if (nextEffort === undefined || nextEffort === currentEffort) {
-                    setDraft(-1);
-                    setPendingIndex(-1);
+                if (!Number.isFinite(nextIndex) || nextIndex < 0) return;
+                if (busy) {
+                    setQueued({ index: nextIndex, key: currentModelKey });
                     return;
                 }
-                setDraft(nextIndex);
-                setPendingIndex(nextIndex);
-                select({
-                    provider: state.current.provider,
-                    model: state.current.model,
-                    reasoningEffort: nextEffort
-                });
+                submitEffort(nextIndex);
             };
 
-            react.useEffect(() => {
-                if (pendingIndex < 0) return;
-                if (currentIndex === pendingIndex) {
-                    setDraft(-1);
-                    setPendingIndex(-1);
-                }
-            }, [currentIndex, pendingIndex]);
-
             const onSliderKeyUp = (event) => {
-                if (event.key === "ArrowLeft" || event.key === "ArrowRight" || event.key === "Home" || event.key === "End") {
-                    commitEffort(event);
-                }
+                if (COMMIT_KEYS.has(event.key)) commitEffort(event);
             };
 
             // Secondary menu: model picker, shown when the model row is clicked.
-            if (state.groups.length === 0 && state.status !== "loading" && !initialLoading) {
-                console.warn("[effort-switcher] no available models", {
-                    status: state.status,
-                    initialLoading,
-                    error: state.error,
-                    current: state.current
-                });
-            }
             const modelList = (state.status === "loading" || initialLoading) && state.groups.length === 0
                 ? react.createElement("div", { className: "dsh-es-menuStatus" }, "加载中…")
                 : state.groups.length === 0
@@ -770,7 +834,10 @@ window.__ModuleLoader__.load({
                     ),
                     displayedLevel?.description
                         ? react.createElement("p", { className: "dsh-es-sliderDesc" }, displayedLevel.description)
-                        : null
+                        : null,
+                    sliderError === null
+                        ? null
+                        : react.createElement("div", { className: "dsh-es-sliderError", role: "status" }, sliderError)
                 )
                 : null;
 
@@ -872,8 +939,25 @@ window.__ModuleLoader__.load({
             );
         }
 
+        // `modelDirectories.directoryFor()` runs on the caller's context. From DSH
+        // 0.1.2 it reads `ctx.remote.session`, and cordis refuses to read a service
+        // the caller did not declare ("cannot get property ... without inject"),
+        // which crashes the slot entry and hands the seat back to the host's own
+        // selector. Older hosts (DSH 0.1.0's own model-selection plugin does not
+        // declare `remote.session`) may not provide it, and a declared but missing
+        // service would leave this plugin waiting forever, so declare only what the
+        // running host actually provides.
+        const DIRECTORY_SERVICES = ["remote", "remote.session"];
+
+        function injectFor(ctx) {
+            const extra = typeof ctx.get === "function"
+                ? DIRECTORY_SERVICES.filter((name) => ctx.get(name) !== void 0)
+                : [];
+            return [...inject, ...extra];
+        }
+
         const apply = (ctx) => {
-            ctx.inject(inject, (scope) => {
+            ctx.inject(injectFor(ctx), (scope) => {
                 const slots = scope.get("slots");
                 const models = scope.get("modelDirectories");
                 const sessions = scope.get("sessions");
@@ -884,15 +968,8 @@ window.__ModuleLoader__.load({
                     inject: (sessionId) => {
                         const directory = models.directoryFor(sessionId);
                         const available = sessions.subagentAddress(sessionId) === void 0;
-                        const snapshot = directory.store?.getSnapshot?.();
-                        console.log("[effort-switcher] directory", {
-                            sessionId,
-                            available,
-                            status: snapshot?.status,
-                            groupCount: snapshot?.groups?.length ?? 0,
-                            error: snapshot?.error ?? null,
-                            current: snapshot?.current ?? null
-                        });
+                        // A write counts as accepted unless it rejects or resolves { ok: false }.
+                        const accepted = (outcome) => !(outcome !== null && typeof outcome === "object" && outcome.ok === false);
                         return {
                             available,
                             directory: directory.store,
@@ -900,7 +977,7 @@ window.__ModuleLoader__.load({
                                 if (available) return directory.load().catch(() => {});
                                 return Promise.resolve();
                             },
-                            select: (selection) => available ? directory.select(selection).then(() => true, () => false) : Promise.resolve(false)
+                            select: (selection) => available ? directory.select(selection).then(accepted, () => false) : Promise.resolve(false)
                         };
                     }
                 }, EffortSliderSeat));
