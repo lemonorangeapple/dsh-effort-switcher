@@ -10,7 +10,12 @@ window.__ModuleLoader__.load({
         const slotName = "conversation.input.model";
 
         const css = `
+/* Panels are opaque. DSH 0.2 makes --dsw-specific-menu a translucent glass fill
+   that the host paints over a blurred backdrop; here it would let the composer
+   show through, so the host's fill is laid over the opaque page background. On
+   hosts where the menu fill is already opaque (0.1.0) the base never shows. */
 .dsh-es-root {
+    --dsh-es-panel-bg: linear-gradient(var(--dsw-specific-menu), var(--dsw-specific-menu)), var(--dsw-alias-bg-base, #fff);
     min-width: 0;
     position: relative;
     display: inline-flex;
@@ -68,7 +73,7 @@ window.__ModuleLoader__.load({
 .dsh-es-menu {
     z-index: 9999;
     border: 1px solid var(--dsw-alias-border-inverted);
-    background: var(--dsw-specific-menu);
+    background: var(--dsh-es-panel-bg);
     width: min(240px, calc(100vw - 32px));
     max-height: min(380px, calc(100vh - 96px));
     box-shadow: var(--dsw-shadow-lv3);
@@ -136,7 +141,7 @@ window.__ModuleLoader__.load({
 .dsh-es-modelMenu {
     z-index: 10000;
     border: 1px solid var(--dsw-alias-border-inverted);
-    background: var(--dsw-specific-menu);
+    background: var(--dsh-es-panel-bg);
     width: min(220px, calc(100vw - 32px));
     max-height: min(240px, calc(100vh - 96px));
     box-shadow: var(--dsw-shadow-lv3);
@@ -211,7 +216,7 @@ window.__ModuleLoader__.load({
     padding: 5px 6px;
     border: 1px solid var(--dsw-alias-border-inverted);
     border-radius: var(--dsw-radius-sm, 6px);
-    background: var(--dsw-specific-menu);
+    background: var(--dsh-es-panel-bg);
     box-shadow: var(--dsw-shadow-lv3);
     color: var(--dsw-alias-label-primary);
     font-size: 11px;

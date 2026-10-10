@@ -293,6 +293,21 @@ for (const rule of cssRules) {
     if (rule.selector.startsWith("@") || !/^\.dsh-es-/.test(rule.selector)) continue;
     throw new Error(`${rule.selector} uses a fixed border-radius (${radius}); use a --dsw-radius-* token with a fallback`);
 }
+// Panels are opaque. DSH 0.2's --dsw-specific-menu is a translucent glass fill, so every
+// panel paints it over the opaque page background instead of using it on its own.
+const panelRoot = cssRules.find((rule) => rule.selector.endsWith(".dsh-es-root"));
+if (!panelRoot || !/--dsh-es-panel-bg:[^;]*var\(--dsw-specific-menu\)[^;]*var\(--dsw-alias-bg-base/.test(panelRoot.body)) {
+    throw new Error("the panel background must lay --dsw-specific-menu over --dsw-alias-bg-base");
+}
+for (const selector of [".dsh-es-menu", ".dsh-es-modelMenu", ".dsh-es-menuItemTip"]) {
+    const rule = cssRules.find((candidate) => candidate.selector.endsWith(selector));
+    if (!rule || !/background:\s*var\(--dsh-es-panel-bg\);/.test(rule.body)) throw new Error(`${selector} must use the opaque panel background`);
+}
+for (const rule of cssRules) {
+    if (/(^|;)\s*background:\s*var\(--dsw-specific-menu\)/.test(rule.body)) {
+        throw new Error(`${rule.selector.split("\n").pop()} uses the translucent menu fill directly`);
+    }
+}
 // The trigger and menu keep following the host's corner style.
 for (const rule of cssRules) {
     if (/\.dsh-es-(trigger|menu|modelMenu)\s*$/.test(rule.selector) && /corner-shape/.test(rule.body)) {

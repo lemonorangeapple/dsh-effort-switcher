@@ -122,6 +122,7 @@
      return JSON.stringify({
        knobFace: m('.dsh-es-sliderKnobFace'), groove: m('.dsh-es-sliderGroove'), fill: m('.dsh-es-sliderFill'),
        tick: m('.dsh-es-sliderTick'), trigger: m('.dsh-es-trigger'), menu: m('.dsh-es-menu'),
+       menuBackground: q('.dsh-es-menu') ? getComputedStyle(q('.dsh-es-menu')).backgroundColor : null,
        sliderValue: q('.dsh-es-slider')?.value ?? null,
        triggerLabel: q('.dsh-es-trigger')?.getAttribute('aria-label') ?? null,
        errorNotice: q('.dsh-es-sliderError')?.textContent ?? null
@@ -138,9 +139,10 @@
 | `trigger`（宿主 0.2.x，较新引擎） | `h: 28`、`fontSize: "13px"`、`fontWeight: "400"`、`borderRadius: "8px"`、`cornerShape: "superellipse(1.5)"` | 应与 `nativeTrigger` 的高度、字号一致 |
 | `trigger`（宿主 0.1.0，无全局圆角规则） | `h: 28`、`13px`、`borderRadius: "24px"`、`cornerShape: "round"` | 同上 |
 | `menu` | `borderRadius` 为 `16px`（0.2.x）或 `10px`（0.1.0） | 仅供参考，不判失败 |
+| `menuBackground` | **不透明**：形如 `rgb(255, 255, 255)`（浅色）或 `rgb(21, 21, 23)`（深色），**不能是** `rgba(…, 0.xx)` | 若带透明度，说明面板仍是透明的，菜单里会透出输入框内容 |
 | `hostCornerShapeToken` | 0.1.2+ 且引擎支持时为 `superellipse(1.5)`，否则 `null` | **关键环境数据**，决定桌面端是否真的会触发圆角方块 |
 
-4. 主观评价（写进报告）：旋钮是否正圆？轨道是否为胶囊形？触发器与旁边的 `Standard mode` 等官方座位是否协调？
+4. 主观评价（写进报告）：旋钮是否正圆？轨道是否为胶囊形？触发器与旁边的 `Standard mode` 等官方座位是否协调？菜单和「模型」子菜单是否**不透明**（看不到底下的输入框文字）？
 
 **6.3 浅色与深色**
 在设置里切换外观（或切换系统外观），分别截图菜单：Off、High、Max 三个档位各一张，浅色深色共 6 张。留意最高档的白色旋钮在浅色菜单上是否难以辨认（这是已知的原有设计，只需描述，不算失败）。
