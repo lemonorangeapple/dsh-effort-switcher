@@ -11,7 +11,7 @@
 
 ## 要求
 
-- DSH `0.1.0-rc.6` 或兼容的 Web profile。
+- DSH `0.1.0-rc.6` 或兼容的 Web profile。`0.1.2-rc.1` 与 `0.2.0-rc.2` 已在真实 Web 端启动并实测（拖动、点击、方向键均能写入）；`0.1.0-rc.6` 本次没有重新实测。
 - 当前模型必须暴露至少一个 reasoning effort 级别。普通非推理模型不会显示滑块。
 
 ## 安装
@@ -83,5 +83,7 @@ npm run check
 - **安装后页面未更新**：Web 启动图已经生成；停止旧 `dsh web` 进程后重新启动。
 - **双重控件或重复挂载**：删掉 profile `cordis.patch.yml` 里旧的 `effort-switcher` insert，只保留 bundle 层。
 - **拖动后未生效**：检查模型是否支持多个 reasoning effort 级别。对于仅有默认强度或不支持 reasoning 的模型，插件会隐藏控件。
+- **显示的是官方模型选择器，像没装插件一样**：打开浏览器控制台，若有 `slot entry crashed in 'conversation.input.model'`，插件的座位渲染崩溃，DSH 便退回官方选择器。DSH 0.1.2 起 `modelDirectories.directoryFor()` 会读取调用方上下文里的 `remote.session`，插件必须声明它（`cannot get property "remote.session" without inject`）；本插件会按宿主实际提供的服务自动声明，请更新到包含此修复的版本并重启 `dsh web`。
+- **滑条或滑块变成圆角方块**：DSH 0.1.2 起主题给所有元素设置了 `corner-shape: superellipse(1.5)`，`border-radius` 的圆会被画成圆角方块。本插件对滑条自身的轨道、填充、旋钮和刻度点显式使用 `corner-shape: round`，菜单与触发器仍跟随 DSH 的圆角风格。
 - **滑块弹回并出现红色提示**：DSH 拒绝了这次写入（例如会话被占用、模型不支持该强度）。滑块会回到真实强度并显示原因，再拖一次即可重试。
 - **在模型切换进行中松开滑块**：这次选择会被保留，待 DSH 空闲后自动提交，不会丢失。

@@ -244,6 +244,9 @@ window.__ModuleLoader__.load({
     background: var(--dsw-alias-border-l1);
     flex: none;
 }
+/* DSH 0.1.2+ applies corner-shape: superellipse(1.5) to every element, which
+   turns border-radius circles into rounded squares. The slider's pill and
+   round parts opt back out the same way the host's own circular controls do. */
 .dsh-es-sliderWrap {
     padding: 3px 8px 5px;
     display: flex;
@@ -273,6 +276,7 @@ window.__ModuleLoader__.load({
     position: absolute;
     inset: 0;
     overflow: hidden;
+    corner-shape: round;
     border-radius: 13px;
     pointer-events: none;
 }
@@ -281,6 +285,7 @@ window.__ModuleLoader__.load({
     top: 0;
     bottom: 0;
     left: 0;
+    corner-shape: round;
     border-radius: 13px;
     pointer-events: none;
 }
@@ -318,6 +323,7 @@ window.__ModuleLoader__.load({
 .dsh-es-sliderKnobFace {
     width: 100%;
     height: 100%;
+    corner-shape: round;
     border-radius: 50%;
     background: #ffffff;
     box-shadow: none;
@@ -337,6 +343,7 @@ window.__ModuleLoader__.load({
 .dsh-es-sliderTick {
     width: 4px;
     height: 4px;
+    corner-shape: round;
     border-radius: 50%;
     background: rgb(255 255 255 / 38%);
 }
@@ -923,8 +930,25 @@ window.__ModuleLoader__.load({
             );
         }
 
+        // `modelDirectories.directoryFor()` runs on the caller's context. From DSH
+        // 0.1.2 it reads `ctx.remote.session`, and cordis refuses to read a service
+        // the caller did not declare ("cannot get property ... without inject"),
+        // which crashes the slot entry and hands the seat back to the host's own
+        // selector. Older hosts (DSH 0.1.0's own model-selection plugin does not
+        // declare `remote.session`) may not provide it, and a declared but missing
+        // service would leave this plugin waiting forever, so declare only what the
+        // running host actually provides.
+        const DIRECTORY_SERVICES = ["remote", "remote.session"];
+
+        function injectFor(ctx) {
+            const extra = typeof ctx.get === "function"
+                ? DIRECTORY_SERVICES.filter((name) => ctx.get(name) !== void 0)
+                : [];
+            return [...inject, ...extra];
+        }
+
         const apply = (ctx) => {
-            ctx.inject(inject, (scope) => {
+            ctx.inject(injectFor(ctx), (scope) => {
                 const slots = scope.get("slots");
                 const models = scope.get("modelDirectories");
                 const sessions = scope.get("sessions");

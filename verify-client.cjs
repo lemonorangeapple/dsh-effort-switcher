@@ -264,6 +264,28 @@ if (!styleTag.textContent.includes("background: #4c8dff")) throw new Error("fill
 if (!styleTag.textContent.includes("linear-gradient(90deg, #4c8dff 0%, #7b6cff 52%, #b56bff 100%)")) {
     throw new Error("last notch must use the blue-to-purple reference gradient");
 }
+// DSH 0.1.2+ sets corner-shape: superellipse(1.5) on every element, which turns
+// border-radius circles into rounded squares. Every round part of the slider must
+// opt back out with corner-shape: round (pseudo-element thumbs are transparent).
+const cssRules = [...styleTag.textContent.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1].trim(), body: m[2] }));
+const sliderRoundRules = cssRules.filter((rule) => /\.dsh-es-slider(Groove|Track|Fill|KnobFace|Tick)\b/.test(rule.selector) && !rule.selector.includes("::"));
+if (sliderRoundRules.length < 4) throw new Error(`expected rules for groove/track/fill/knob/tick, found ${sliderRoundRules.length}`);
+for (const rule of sliderRoundRules) {
+    if (!/border-radius:\s*(13px|50%)/.test(rule.body)) continue;
+    if (!/corner-shape:\s*round\s*;/.test(rule.body)) {
+        throw new Error(`${rule.selector} is round but does not opt out of the host's corner-shape`);
+    }
+}
+for (const part of ["sliderGroove", "sliderTrack", "sliderFill", "sliderKnobFace", "sliderTick"]) {
+    const covered = sliderRoundRules.some((rule) => rule.selector.includes(`.dsh-es-${part}`) && /corner-shape:\s*round/.test(rule.body));
+    if (!covered) throw new Error(`.dsh-es-${part} must set corner-shape: round`);
+}
+// The trigger and menu keep following the host's corner style.
+for (const rule of cssRules) {
+    if (/\.dsh-es-(trigger|menu|modelMenu)\s*$/.test(rule.selector) && /corner-shape/.test(rule.body)) {
+        throw new Error(`${rule.selector} must follow the host's corner-shape`);
+    }
+}
 const thumbBlock = styleTag.textContent.match(/\.dsh-es-slider::-webkit-slider-thumb\s*\{[^}]*\}/)?.[0] ?? "";
 if (thumbBlock.includes("border: 1px solid")) throw new Error("thumb must not have a colored ring");
 if (!styleTag.textContent.includes(".dsh-es-sliderRail")) throw new Error("slider must render a dedicated rail layer");
@@ -841,6 +863,33 @@ async function main() {
         settle();
         snapshot.groups = savedGroups;
         assert(consoleCalls.length === 0, `plugin must not log: ${JSON.stringify(consoleCalls)}`);
+    }
+
+    // F. Declared services: DSH 0.1.2's directoryFor() reads ctx.remote.session on the
+    //    caller's context, so the plugin must declare what the host provides. A declared
+    //    service the host lacks (DSH 0.1.0 has no remote.session) would park the plugin.
+    {
+        const base = ["slots", "modelDirectories", "sessions"];
+        const declared = (provided, withGet = true) => {
+            const seen = [];
+            const saved = registered;
+            captured.apply({
+                inject(services, callback) {
+                    seen.push([...services]);
+                    return ctx.inject(services, callback);
+                },
+                ...withGet ? { get: (name) => provided.includes(name) ? {} : undefined } : {}
+            });
+            registered = saved;
+            return seen[0];
+        };
+        const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+        assert(same(captured.inject, base), `module-level inject must stay the base list, got ${JSON.stringify(captured.inject)}`);
+        assert(same(declared(["remote", "remote.session"]), [...base, "remote", "remote.session"]),
+            "must declare remote and remote.session when the host provides them");
+        assert(same(declared(["remote"]), [...base, "remote"]), "must declare only the services the host provides");
+        assert(same(declared([]), base), "must not declare services the host lacks");
+        assert(same(declared(["remote", "remote.session"], false), base), "a context without get() must fall back to the base list");
     }
 
     console.log("all checks passed");
