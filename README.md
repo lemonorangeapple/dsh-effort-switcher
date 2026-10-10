@@ -11,7 +11,7 @@
 
 ## 要求
 
-- DSH `0.1.0-rc.6` 或兼容的 Web profile。`0.1.2-rc.1`、`0.2.0-rc.2` 与 `0.2.1-alpha.2` 已在真实 Web 端启动并实测（拖动、点击、方向键均能写入）；`0.1.0-rc.6` 本次没有重新实测。触发器的尺寸与圆角按 DSH 0.2.x 的原生模型座位对齐，更早的宿主上会略大一点。
+- DSH `0.1.0-rc.6` 或兼容的 Web profile。`0.1.2-rc.1`、`0.2.0-rc.2` 与 `0.2.1-alpha.2` 已在真实 Web 端启动并实测（拖动、点击、方向键均能写入）；`0.1.0-rc.6` 也已在真实 Web 端实测通过。桌面端（Electron）尚未在真机实测，见 `docs/desktop-test-prompt.md`。触发器的尺寸、字号与圆角按 DSH 0.2.x 的原生模型座位对齐；在 0.1.0-rc.6 上宿主座位同为 28px / 13px，仅字重（500 对 400）和圆角（24px 回退值）略有差别。
 - 当前模型必须暴露至少一个 reasoning effort 级别。普通非推理模型不会显示滑块。
 
 ## 安装
@@ -58,6 +58,7 @@ host.js            Minimal Cordis host entry used by DSH loader discovery.
 cordis.patch.yml   Bundle patch that inserts the host plugin row.
 package.json       Package exports, dsh.bundle, and dsh.client manifest.
 README.md          Installation and operating instructions.
+docs/desktop-test-prompt.md  Prompt for an agent to test the plugin on the Electron desktop app.
 .gitignore         Local development exclusions.
 ```
 

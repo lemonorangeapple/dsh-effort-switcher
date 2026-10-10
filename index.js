@@ -23,7 +23,7 @@ window.__ModuleLoader__.load({
     cursor: pointer;
     background: 0 0;
     border: none;
-    border-radius: var(--dsw-radius-sm, 22px);
+    border-radius: var(--dsw-radius-sm, 24px);
     outline: none;
     align-items: center;
     gap: 4px;

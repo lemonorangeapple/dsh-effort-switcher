@@ -237,7 +237,7 @@ if (!captured) throw new Error("client module did not register");
 // 0. Styles must be injected at module load (original bundles do this at top level)
 const styleTag = styleTags.find((tag) => tag.dataset.pluginCss === "dsh-effort-switcher/seat.css");
 if (!styleTag) throw new Error("style tag not injected at module load");
-if (!styleTag.textContent.includes("border-radius: var(--dsw-radius-sm, 22px)")) throw new Error("trigger must follow the host radius token, falling back to 22px");
+if (!styleTag.textContent.includes("border-radius: var(--dsw-radius-sm, 24px)")) throw new Error("trigger must follow the host radius token, falling back to 24px (the 0.1.0 seat)");
 if (!styleTag.textContent.includes("--dsw-alias-label-secondary")) throw new Error("dsh tokens missing from injected css");
 if (!styleTag.textContent.includes("scrollbar-width: none")) throw new Error("scrollbar must be hidden");
 if (!styleTag.textContent.includes("::-webkit-scrollbar")) throw new Error("webkit scrollbar hide rule missing");
